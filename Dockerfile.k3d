@@ -1,0 +1,47 @@
+FROM cgr.dev/chainguard/wolfi-base:latest
+
+# Add core packages
+RUN apk add -U mount umount uutils vim ca-certificates wget curl grep bash sed util-linux-misc linux-pam
+
+# Add containers packages
+RUN apk add -U containerd kubectl nerdctl iptables ip6tables cni-plugins-bridge cni-plugins-firewall cni-plugins-host-local cni-plugins-loopback cni-plugins-portmap cni-plugins-tuning flannel-cni-plugin
+
+# Add dev packages
+RUN apk add -U git meson pkgconf make cmake gcc glibc glibc-dev linux-pam-dev libcap-dev
+
+# Build OpenRC
+WORKDIR /root/
+RUN git clone https://github.com/OpenRC/openrc.git && \
+    cd ./openrc && \
+    meson setup builddir && \
+    cd builddir && \
+    meson compile && \
+    meson test && \
+    sed -i 's/"${DESTDIR}\/${init_d_dir}"/"${DESTDIR}\/${init_d_dir}"\/functions.sh/' ../tools/meson_runlevels.sh && \
+    DESTDIR=/ meson install
+    
+# Create a link for openrc
+RUN ln -s /sbin/openrc-init /sbin/init
+
+# Change root shell to bash
+RUN sed -i '/^root/s/ash/bash/' /etc/passwd
+
+# Add the containerD OpenRC config files
+RUN wget https://raw.githubusercontent.com/alpinelinux/aports/3.18-stable/community/containerd/containerd.confd -O /etc/conf.d/containerd && \
+    wget https://raw.githubusercontent.com/alpinelinux/aports/3.18-stable/community/containerd/containerd.initd -O /etc/init.d/containerd && \
+    chmod +x /etc/init.d/containerd && \
+    rc-update add containerd default
+
+# Add the nerdctl config files
+RUN mkdir /etc/nerdctl /root/.kube
+ADD ./nerdctl.toml /etc/nerdctl/nerdctl.toml
+ADD ./nerdctl-bridge.conflist /etc/cni/net.d/nerdctl-bridge.conflist
+
+# Add the wsl.conf
+ADD ./wsl.conf /etc/wsl.conf
+
+# Clean resources
+RUN rm -rf /root/openrc
+
+# Entrypoint
+ENTRYPOINT [ "/bin/nerdctl" ]

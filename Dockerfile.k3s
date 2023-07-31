@@ -1,0 +1,13 @@
+FROM cgr.dev/chainguard/wolfi-base:latest
+
+# Add core packages
+RUN apk add -U mount umount
+
+# Add K3s
+RUN apk add -U k3s
+
+# Add the wsl.conf
+ADD ./wsl.conf /etc/wsl.conf
+
+# Entrypoint
+ENTRYPOINT [ "/bin/k3s" ]

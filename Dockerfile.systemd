@@ -1,0 +1,15 @@
+FROM cgr.dev/chainguard/wolfi-base:latest
+
+# Add core packages
+RUN apk add -U mount umount bash curl systemd
+
+# Install K3s with k3sup
+RUN mkdir -p /usr/local/bin && \
+    curl -sLS https://get.k3sup.dev | sh && \
+    k3sup install --local
+
+# Add the wsl.conf
+ADD ./wsl.conf /etc/wsl.conf
+
+# Entrypoint
+ENTRYPOINT [ "/bin/k3s" ]

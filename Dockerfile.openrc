@@ -1,0 +1,42 @@
+FROM cgr.dev/chainguard/wolfi-base:latest
+
+# Add core packages
+RUN apk add -U mount umount uutils vim ca-certificates wget curl grep bash sed util-linux-misc linux-pam
+
+# Add dev packages
+RUN apk add -U git meson pkgconf make cmake gcc glibc glibc-dev linux-pam-dev libcap-dev
+
+# Build OpenRC
+WORKDIR /root/
+RUN git clone https://github.com/OpenRC/openrc.git && \
+    cd ./openrc && \
+    meson setup builddir && \
+    cd builddir && \
+    meson compile && \
+    meson test && \
+    sed -i 's/"${DESTDIR}\/${init_d_dir}"/"${DESTDIR}\/${init_d_dir}"\/functions.sh/' ../tools/meson_runlevels.sh && \
+    DESTDIR=/ meson install
+    
+# Create a link for openrc
+RUN ln -s /sbin/openrc-init /sbin/init
+
+# Change root shell to bash
+RUN sed -i '/^root/s/ash/bash/' /etc/passwd
+
+# Install K3s with k3sup
+RUN mkdir -p /usr/local/bin && \
+    curl -sLS https://get.k3sup.dev | sh && \
+    k3sup install --local
+
+# Configure kubeconfig
+RUN mkdir /root/.kube && \
+    ln -s /etc/rancher/k3s/k3s.yaml /root/.kube/config
+
+# Add the wsl.conf
+ADD ./wsl.conf /etc/wsl.conf
+
+# Clean resources
+RUN rm -rf /root/openrc
+
+# Entrypoint
+ENTRYPOINT [ "/bin/k3s" ]
