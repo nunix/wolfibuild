@@ -4,7 +4,7 @@ FROM cgr.dev/chainguard/wolfi-base:latest
 RUN apk add -U mount umount uutils vim ca-certificates wget curl grep bash sed util-linux-misc linux-pam
 
 # Add dev packages
-RUN apk add -U git meson pkgconf make cmake gcc glibc glibc-dev linux-pam-dev libcap-dev
+RUN apk add -U git meson pkgconf make cmake gcc glibc=2.37-r9 glibc-dev=2.37-r9 linux-pam-dev libcap-dev
 
 # Build OpenRC
 WORKDIR /root/
